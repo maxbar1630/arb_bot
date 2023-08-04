@@ -1,0 +1,23 @@
+{
+	"botAddress": "0x21eEdd8EaC9cB037814144e476387799565Cea3f",
+	"dexs": [
+		{
+			"name": "Uniswap",
+			"factoryAddress": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+			"routerAddress": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"
+		},
+		{
+			"name": "Sushiswap",
+			"factoryAddress": "0xc0aee478e3658e2610c5f7a4a2e1777ce9e4f2ac",
+			"routerAddress": "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
+		}
+	],
+	"baseTokens": [
+		{
+			"symbol": "WETH",
+			"tokenAddress": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+			"minTradeAmount": 0.01,
+			"minProfitAmount": 0.0001
+		}
+	]
+}

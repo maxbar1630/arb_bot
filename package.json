@@ -1,0 +1,25 @@
+{
+  "name": "arbitrage-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "scripts": {
+    "deploy": "npx hardhat run --network $npm_config_network ./scripts/deploy.js",
+    "verify": "npx hardhat verify --network $npm_config_network $npm_config_address",
+    "scan": "npx hardhat run --network $npm_config_network ./scripts/scan.js",
+    "trade": "npx hardhat run --network $npm_config_network ./scripts/trade.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.17.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.2",
+    "dotenv": "^14.2.0",
+    "mongodb": "^5.7.0",
+    "web3": "^1.8.2"
+  }
+}
