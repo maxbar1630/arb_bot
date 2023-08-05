@@ -33,22 +33,16 @@ For example:
 or
 # npm run deploy --network=bsc
 
-After the first installation of Hardhat, execute the command "npm install"
-
 - After deploy the bot smart contract, then verify it.
-!! If API KEY error, change it in .env: YKR9TR4S2HAM3TXHA1MZ3E4WMTHS8JSD63
 
 # npm run verify --network=<network> --address=<contract_address>
 
 For example:
-# npm run verify --network=eth --address=0x378A8efC22099744Bb52e4e2E98Bc0A176D86362
+# npm run verify --network=eth --address=0x0e2469f2703628049F88403D0bd1b838D6686964
 or
 # npm run verify --network=bsc --address=0x0e2469f2703628049F88403D0bd1b838D6686964
 
-!! Copy the contract address in the /scripts/config/eth.json
-
 - After verify the bot smart contract, then scan all pairs in swap.
-!! eth.json version, use the last file given by Artur
 
 npm run scan --network=<network>
 
