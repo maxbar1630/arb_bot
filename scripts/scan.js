@@ -45,11 +45,7 @@ async function scanPair() {
 		let pair = await pairCollection.findOne({ index })
 		let pairContract
 
-		if (pair) {
-			delete pair._id
-
-			pairContract = new web3.eth.Contract(UNISWAP_V2_PAIR_ABI, pair.address)
-		} else {
+		if (!pair) {
 			pair = {}
 
 			pair.index = index
@@ -62,20 +58,16 @@ async function scanPair() {
 
 			await pairCollection.insertOne(pair)
 
-			console.log(`#${index}th pair inserted`)
+			console.log(`#${index}th pair was scanned`)
 		}
-
-		pair.reserves = await pairContract.methods.getReserves().call()
-
-		await pairCollection.updateOne({ index }, { $set: pair })
-
-		console.log(`#${index}th pair updated`)
 
 		synced_pair_count = index
 		await configCollection.updateOne({}, { $set: { [synced_pair_count_field]: synced_pair_count } })
 	}
 
-	console.log('\nAll pairs are scanned')
+	console.log('\nAll pairs were scanned')
+
+	process.exit(0)
 }
 
 scanPair()

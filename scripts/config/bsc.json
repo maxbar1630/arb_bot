@@ -16,8 +16,8 @@
 		{
 			"symbol": "WBNB",
 			"tokenAddress": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-			"minTradeAmount": 0.1,
-			"minProfitAmount": 0.001
+			"minTradeAmount": 1,
+			"minProfitAmount": 0.01
 		}
 	]
 }

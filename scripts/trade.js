@@ -16,9 +16,10 @@ const BOT_ABI = require('./abi/BOT-ABI.json')
 
 const NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-const MIN_RESERVE_RATE = 100
-const TOKEN_OFFSET = 0
-const TOKEN_COUNT = 10
+const MIN_RESERVE_RATE = 10
+const PAIR_OFFSET = 0
+const PAIR_COUNT = 0
+const IS_TEST = false
 
 const account = web3.eth.accounts.privateKeyToAccount(hre.network.config.accounts[0])
 const bot = new web3.eth.Contract(BOT_ABI, config.botAddress)
@@ -58,7 +59,11 @@ async function checkValidDex(dex, baseToken, targetToken) {
 	return false
 }
 
-async function init() {
+async function main() {
+	console.log('********** Arbitrage Bot **********')
+
+	console.log()
+
 	console.log('DEXs are loading ...')
 
 	const dexs = []
@@ -68,9 +73,16 @@ async function init() {
 		dex.router = new web3.eth.Contract(UNISWAP_V2_ROUTER_ABI, dex.routerAddress)
 
 		dexs.push(dex)
+
+		console.log(`${dex.name} was loaded`)
 	}
 
-	console.log("DEXs were loaded")
+	if (dexs.length < 2) {
+		console.log('Valid DEX count is less than 2')
+		return
+	}
+
+	console.log('All DEXs were loaded')
 
 	console.log()
 
@@ -85,23 +97,46 @@ async function init() {
 		baseToken.minProfitAmount = BigInt(baseToken.minProfitAmount * 10 ** baseToken.decimals)
 
 		baseTokens.push(baseToken)
+
+		console.log(`${baseToken.symbol} was loaded`)
 	}
 
-	console.log('Base tokens were loaded')
+	if (!baseTokens.length) {
+		console.log('There is no valid base token')
+		return
+	}
+
+	console.log('All base tokens were loaded')
 
 	console.log()
 
-	console.log('Candidate trades are loading ...')
+	console.log('Trade is starting ...')
 
-	const candidateTrades = []
+	let totalProfitAmount = {}
 
 	for (const baseToken of baseTokens) {
-		let pairs = await pairCollection.find(
-			{ $or: [{ token0: baseToken.tokenAddress }, { token1: baseToken.tokenAddress }] }
-		).sort({ index: 1 }).skip(TOKEN_OFFSET)
+		totalProfitAmount[baseToken.symbol] = 0
 
-		if (TOKEN_COUNT > 0) {
-			pairs = await pairs.limit(TOKEN_COUNT)
+		const baseTokenDecimal = 10 ** baseToken.decimals
+
+		const query = { $and: [] }
+
+		query.$and.push({ $or: [{ token0: baseToken.tokenAddress }, { token1: baseToken.tokenAddress }] })
+
+		if (PAIR_OFFSET > 0) {
+			query.$and.push({ index: { $gt: PAIR_OFFSET - 1 } })
+		}
+
+		if (PAIR_COUNT > 0) {
+			query.$and.push({ index: { $lt: PAIR_OFFSET + PAIR_COUNT } })
+		}
+
+		let pairs = await pairCollection.find(
+			
+		).sort({ index: 1 }).skip(PAIR_OFFSET)
+
+		if (PAIR_COUNT > 0) {
+			pairs = await pairs.limit(PAIR_COUNT)
 		}
 
 		pairs = await pairs.toArray()
@@ -128,107 +163,109 @@ async function init() {
 							continue
 						}
 
+						console.log()
+
+						console.log(`${pair.index}th pair: ${baseToken.symbol} => ${dex1.name} => ${targetToken.symbol} => ${dex2.name} => ${baseToken.symbol}`)
+
+						let baseTokenBalance
+
+						if (IS_TEST) {
+							baseTokenBalance = baseToken.minTradeAmount
+						} else {
+							baseTokenBalance = await baseToken.contract.methods.balanceOf(config.botAddress).call()
+							baseTokenBalance = BigInt(baseTokenBalance)
+						}
+
+						if (baseTokenBalance < baseToken.minTradeAmount) {
+							console.log(`Bot's ${baseToken.symbol} balance is less than minimum trade amount`)
+							continue
+						}
+
 						if (!(await checkValidDex(dex1, baseToken, targetToken))) {
+							console.log(`${dex1.name} isn't valid to trade ${baseToken.symbol} and ${targetToken.symbol}`)
 							continue
 						}
 
 						if (!(await checkValidDex(dex2, baseToken, targetToken))) {
+							console.log(`${dex2.name} isn't valid to trade ${baseToken.symbol} and ${targetToken.symbol}`)
 							continue
 						}
 
-						candidateTrades.push({ baseToken, targetToken, dex1, dex2 })
+						try {
+							while (true) {
+								let estimatedOutAmount = await bot.methods.estimateTrade(
+									dex1.routerAddress,
+									dex2.routerAddress,
+									baseToken.tokenAddress,
+									targetToken.tokenAddress,
+									baseTokenBalance
+								).call()
+								estimatedOutAmount = BigInt(estimatedOutAmount)
 
-						console.log(`${baseToken.symbol} => ${dex1.name} => ${targetToken.symbol} => ${dex2.name} => ${baseToken.symbol}`)
+								console.log(
+									`Estimated out amount: `,
+									`${Number(baseTokenBalance) / baseTokenDecimal} ${baseToken.symbol}`,
+									` => `,
+									`${Number(estimatedOutAmount) / baseTokenDecimal} ${baseToken.symbol}`,
+								)
+
+								if (targetToken.symbol === 'CEL') 
+									console.log()
+
+								if (!IS_TEST) {
+									if (estimatedOutAmount > baseTokenBalance + baseToken.minProfitAmount) {
+										let tradedOutAmount = await bot.methods.trade(
+											dex1.routerAddress,
+											dex2.routerAddress,
+											baseToken.tokenAddress,
+											targetToken.tokenAddress,
+											baseTokenBalance,
+										).call({ from: account })
+										tradedOutAmount = BigInt(tradedOutAmount)
+	
+										console.log(
+											`Traded out amount: `,
+											`${Number(baseTokenBalance) / baseTokenDecimal} ${baseToken.symbol}`,
+											` => `,
+											`${Number(tradedOutAmount) / baseTokenDecimal} ${baseToken.symbol}`,
+										)
+
+										const profitAmount = Number(tradedOutAmount - baseTokenBalance) / baseTokenDecimal
+	
+										console.log(`Profit amount: ${profitAmount} ${baseToken.symbol}`)
+
+										totalProfitAmount[baseToken.symbol] += profitAmount
+									} else {
+										console.log('This trade isn\'t profitable')
+										break
+									}
+								} else {
+									break
+								}
+							}
+						} catch (error) {
+							console.error(error)
+						}
 					}
 				}
 			} catch (error) {
 				console.error(error)
 			}
 		}
+			
 	}
-
-	console.log('Candidate trades are loaded')
-
-	return candidateTrades
-}
-
-async function main() {
-	console.log('********** Arbitrage Bot **********')
 
 	console.log()
 
-	console.log('The bot is initing ...\n')
-
-	const candidateTrades = await init()
-
-	console.log('\nThe bot was inited')
+	console.log('Trade was finished')
 
 	console.log()
-
-	while (true) {
-		for (const candidateTrade of candidateTrades) {
-			try {
-				while (true) {
-					let baseTokenBalance = await candidateTrade.baseToken.contract.methods.balanceOf(config.botAddress).call()
-					baseTokenBalance = BigInt(baseTokenBalance)
-
-					let estimatedOutAmount = await bot.methods.estimateTrade(
-						candidateTrade.dex1.routerAddress,
-						candidateTrade.dex2.routerAddress,
-						candidateTrade.baseToken.tokenAddress,
-						candidateTrade.targetToken.tokenAddress,
-						baseTokenBalance
-					).call()
-					estimatedOutAmount = BigInt(estimatedOutAmount)
-
-					console.log(
-						`Estimated out amount: `,
-						`${baseTokenBalance / 10 ** candidateTrade.baseToken.decimals} ${candidateTrade.baseToken.symbol}`,
-						` => `,
-						`${estimatedOutAmount / 10 ** candidateTrade.baseToken.decimals} ${candidateTrade.baseToken.symbol}`,
-					)
-
-					if (estimatedOutAmount > baseTokenBalance + candidateTrade.baseToken.minProfitAmount) {
-						let tradedOutAmount = await bot.methods.trade(
-							candidateTrade.dex1.routerAddress,
-							candidateTrade.dex2.routerAddress,
-							candidateTrade.baseToken.tokenAddress,
-							candidateTrade.targetToken.tokenAddress,
-							baseTokenBalance,
-						).call({ from: account })
-						tradedOutAmount = BigInt(tradedOutAmount)
-
-						console.log(
-							`Traded out amount: `,
-							`${baseTokenBalance / 10 ** candidateTrade.baseToken.decimals} ${candidateTrade.baseToken.symbol}`,
-							` => `,
-							`${tradedOutAmount / 10 ** candidateTrade.baseToken.decimals} ${candidateTrade.baseToken.symbol}`,
-						)
-					} else {
-						break
-					}
-				}
-			} catch (error) {
-				console.error(error)
-			}
-		}
-
-		break
+	
+	for (const baseToken of baseTokens) {
+		console.log(`Total ${baseToken.symbol} profit amount: ${totalProfitAmount[baseToken.symbol]} ${baseToken.symbol}`)
 	}
-}
 
-async function test() {
-	const tradeOutAmount = await bot.methods.trade(
-		'0x10ED43C718714eb63d5aA57B78B54704E256024E',
-		'0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8',
-		'0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-		'0x8076C74C5e3F5852037F31Ff0093Eeb8c8ADd8D3',
-		Number(0.1 * 10 ** 18),
-	).call({ from: account })
-
-	console.log(tradeOutAmount)
+	process.exit(0)
 }
 
 main()
-
-// test()

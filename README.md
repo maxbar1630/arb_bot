@@ -1,8 +1,7 @@
 1. Environment
 
-- Node install
+- Node.js install
 
-# curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh
 # curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 # source ~/.bashrc
 # nvm list-remote
@@ -20,11 +19,13 @@
 
 2. Run the bot
 
-- Please install node modules first.
+- Install node modules first.
 
 # npm install
 
-- After install node modules, then deploy the bot smart contract.
+- Input private key to hardhat.config.js file.
+
+- After install node modules, then deploy the bot contract.
 
 # npm run deploy --network=<network>
 
@@ -33,16 +34,18 @@ For example:
 or
 # npm run deploy --network=bsc
 
-- After deploy the bot smart contract, then verify it.
+- After deploy the bot contract, then verify it.
 
 # npm run verify --network=<network> --address=<contract_address>
 
 For example:
-# npm run verify --network=eth --address=0x0e2469f2703628049F88403D0bd1b838D6686964
+# npm run verify --network=eth --address=0x21eEdd8EaC9cB037814144e476387799565Cea3f
 or
 # npm run verify --network=bsc --address=0x0e2469f2703628049F88403D0bd1b838D6686964
 
-- After verify the bot smart contract, then scan all pairs in swap.
+- After verify the bot contract, then deposit the trade amount to the bot contract
+
+- After deposit the trade amount, then scan all pairs in swap.
 
 npm run scan --network=<network>
 
@@ -51,7 +54,7 @@ For example:
 or
 # npm run scan --network=bsc
 
-- After scan all pairs, then start trade.
+- After scan all pairs, then trade using the bot.
 
 npm run trade --network=<network>
 
